@@ -156,8 +156,8 @@
         #define LCD_WIDTH 22
         #define LCD_HEIGHT 5
       #else
-        #define LCD_WIDTH 16
-        #define LCD_HEIGHT 2
+        #define LCD_WIDTH 20
+        #define LCD_HEIGHT 4
       #endif
     #endif
   #endif
