@@ -1316,32 +1316,82 @@ static void setup_for_endstop_move() {
       plan_bed_level_matrix.set_to_identity();
       feedrate = homing_feedrate[Z_AXIS];
 
-      // Move down until the Z probe (or endstop?) is triggered
-      float zPosition = -(Z_MAX_LENGTH + 10);
-      line_to_z(zPosition);
-      st_synchronize();
+      #if ENABLED(ULTRASONIC_LEVELING) // Peter
 
-      // Tell the planner where we ended up - Get this from the stepper handler
-      zPosition = st_get_position_mm(Z_AXIS);
-      plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], zPosition, current_position[E_AXIS]);
+        float duration = 0;
+        float distance;
 
-      // move up the retract distance
-      zPosition += home_bump_mm(Z_AXIS);
-      line_to_z(zPosition);
-      st_synchronize();
-      endstops_hit_on_purpose(); // clear endstop hit flags
+        // Set directions
+        SET_OUTPUT(Z_US_TRIG_PIN);
+        SET_INPUT(Z_US_ECHO_PIN);
 
-      // move back down slowly to find bed
-      set_homing_bump_feedrate(Z_AXIS);
+        for(int i = 0; i < Z_PROBE_TIMES; i++) {
+        // Trigger sensor
+        delay(300);
+        SERIAL_PROTOCOLPGM("PETER: Trigger sensor\n");
+        WRITE(Z_US_TRIG_PIN, LOW); // Ensure pin is low
+        delayMicroseconds(2);
+        WRITE(Z_US_TRIG_PIN, HIGH); // Start ranging
+        delayMicroseconds(10); // with 5 microsecond burst
+        WRITE(Z_US_TRIG_PIN, LOW); // End ranging
 
-      zPosition -= home_bump_mm(Z_AXIS) * 2;
-      line_to_z(zPosition);
-      st_synchronize();
-      endstops_hit_on_purpose(); // clear endstop hit flags
+        // Get time
+        duration += pulseIn(Z_US_ECHO_PIN, HIGH);
+        SERIAL_PROTOCOLPGM("PETER: Get time (");
+        SERIAL_PROTOCOL(i);
+        SERIAL_PROTOCOLPGM(") = ");
+        SERIAL_PROTOCOL(duration);
+        SERIAL_PROTOCOLPGM("\n");
+        }
+  
+        // Calc. distance
+        distance = ((duration/Z_PROBE_TIMES/2) / 29.1);
 
-      // Get the current stepper position after bumping an endstop
-      current_position[Z_AXIS] = st_get_position_mm(Z_AXIS);
-      sync_plan_position();
+        // Report duration
+        SERIAL_PROTOCOLPGM("PETER: distance = ");
+        SERIAL_PROTOCOL(distance);
+        SERIAL_PROTOCOLPGM(" cm\n");
+
+        current_position[Z_AXIS] = distance * 10; // mm
+
+      #else //!ULTRASONIC_LEVELING
+
+        // Move down until the Z probe (or endstop?) is triggered
+        float zPosition = -(Z_MAX_LENGTH + 10);
+        line_to_z(zPosition);
+        st_synchronize(); //Block until all buffered steps are executed
+
+        // Tell the planner where we ended up - Get this from the stepper handler
+        zPosition = st_get_position_mm(Z_AXIS);
+        plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], zPosition, current_position[E_AXIS]);
+
+        // move up the retract distance
+        zPosition += home_bump_mm(Z_AXIS);
+        line_to_z(zPosition);
+        st_synchronize();
+        endstops_hit_on_purpose(); // clear endstop hit flags
+
+        // move back down slowly to find bed
+        set_homing_bump_feedrate(Z_AXIS);
+
+        zPosition -= home_bump_mm(Z_AXIS) * 2;
+        line_to_z(zPosition);
+        st_synchronize();
+        endstops_hit_on_purpose(); // clear endstop hit flags
+
+        // Get the current stepper position after bumping an endstop
+        current_position[Z_AXIS] = st_get_position_mm(Z_AXIS);
+
+      #endif //ULTRASONIC_LEVELING
+
+      SERIAL_PROTOCOLPGM("PETER: current_position(x, y, z) = (");
+      SERIAL_PROTOCOL(current_position[X_AXIS]);
+      SERIAL_PROTOCOLPGM(", ");
+      SERIAL_PROTOCOL(current_position[Y_AXIS]);
+      SERIAL_PROTOCOLPGM(", ");
+      SERIAL_PROTOCOL(current_position[Z_AXIS]);
+      SERIAL_PROTOCOLPGM(")\n");
+      sync_plan_position(); //plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 
       #if ENABLED(DEBUG_LEVELING_FEATURE)
         if (marlin_debug_flags & DEBUG_LEVELING) {
@@ -3180,11 +3230,16 @@ inline void gcode_G28() {
           }
         #endif
 
-        current_position[Z_AXIS] = -zprobe_zoffset + (z_tmp - real_z)
+        // Peter
+        #if ENABLED(ULTRASONIC_LEVELING)
+          current_position[Z_AXIS] = current_position[Z_AXIS] + Z_PROBE_OFFSET_FROM_EXTRUDER_US;
+        #else //!ULTRASONIC_LEVELING
+          current_position[Z_AXIS] = -zprobe_zoffset + (z_tmp - real_z)
           #if HAS_SERVO_ENDSTOPS || ENABLED(Z_PROBE_ALLEN_KEY) || ENABLED(Z_PROBE_SLED)
              + Z_RAISE_AFTER_PROBING
           #endif
           ;
+        #endif //ULTRASONIC_LEVELING
         // current_position[Z_AXIS] += home_offset[Z_AXIS]; // The Z probe determines Z=0, not "Z home"
         sync_plan_position();
 
