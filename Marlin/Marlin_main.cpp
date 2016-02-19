@@ -1316,7 +1316,7 @@ static void setup_for_endstop_move() {
       plan_bed_level_matrix.set_to_identity();
       feedrate = homing_feedrate[Z_AXIS];
 
-      #if ENABLED(ULTRASONIC_LEVELING) // Peter
+      #if ENABLED(ULTRASONIC_LEVELING)
 
         float duration = 0;
         float distance;
@@ -1328,7 +1328,7 @@ static void setup_for_endstop_move() {
         for(int i = 0; i < Z_PROBE_TIMES; i++) {
         // Trigger sensor
         delay(300);
-        SERIAL_PROTOCOLPGM("PETER: Trigger sensor\n");
+        SERIAL_PROTOCOLPGM("ULTRASONIC: Trigger sensor\n");
         WRITE(Z_US_TRIG_PIN, LOW); // Ensure pin is low
         delayMicroseconds(2);
         WRITE(Z_US_TRIG_PIN, HIGH); // Start ranging
@@ -1337,7 +1337,7 @@ static void setup_for_endstop_move() {
 
         // Get time
         duration += pulseIn(Z_US_ECHO_PIN, HIGH);
-        SERIAL_PROTOCOLPGM("PETER: Get time (");
+        SERIAL_PROTOCOLPGM("ULTRASONIC: Get time (");
         SERIAL_PROTOCOL(i);
         SERIAL_PROTOCOLPGM(") = ");
         SERIAL_PROTOCOL(duration);
@@ -1348,7 +1348,7 @@ static void setup_for_endstop_move() {
         distance = ((duration/Z_PROBE_TIMES/2) / 29.1);
 
         // Report duration
-        SERIAL_PROTOCOLPGM("PETER: distance = ");
+        SERIAL_PROTOCOLPGM("ULTRASONIC: distance = ");
         SERIAL_PROTOCOL(distance);
         SERIAL_PROTOCOLPGM(" cm\n");
 
@@ -1384,7 +1384,7 @@ static void setup_for_endstop_move() {
 
       #endif //ULTRASONIC_LEVELING
 
-      SERIAL_PROTOCOLPGM("PETER: current_position(x, y, z) = (");
+      SERIAL_PROTOCOLPGM("ULTRASONIC: current_position(x, y, z) = (");
       SERIAL_PROTOCOL(current_position[X_AXIS]);
       SERIAL_PROTOCOLPGM(", ");
       SERIAL_PROTOCOL(current_position[Y_AXIS]);
@@ -3230,7 +3230,6 @@ inline void gcode_G28() {
           }
         #endif
 
-        // Peter
         #if ENABLED(ULTRASONIC_LEVELING)
           current_position[Z_AXIS] = current_position[Z_AXIS] + Z_PROBE_OFFSET_FROM_EXTRUDER_US;
         #else //!ULTRASONIC_LEVELING
